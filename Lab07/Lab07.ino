@@ -5,6 +5,7 @@
  * Con ayuda de: José Guerra
  * Adaptación del ejemplo a librería: Luis Pablo Carranza
  * IE3027: Electrónica Digital 2 - 2023
+ * Laboratorio 7 Luis Pablo Carranza
  */
 //***************************************************************************************************************************************
 #include <stdint.h>
@@ -21,28 +22,34 @@
 #include "driverlib/rom.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/timer.h"
+#include <avr/pgmspace.h>
 
-#include <SD.h>
+#define Player11 PUSH1
+#define Player12 PUSH2
 // El SPI es el 0
 //MOSI va a PA_5
 //MISO va a PA_4
 //SCK va a PA_2
 
-File myFile;
-int chartohex(int val);
+int buttonState1 = 1;
+int buttonState2 = 1;
+int xp1 = 0;
+int comp = 0;                   // Variable para comparar posición del jugador 1
+int comp2 = 35;                   // Variable para comparar posición del jugador 
 //***************************************************************************************************************************************
 // Inicialización
 //***************************************************************************************************************************************
 void setup() {
-  
   SysCtlClockSet(SYSCTL_SYSDIV_2_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ);
+  pinMode(Player11, INPUT_PULLUP);
+  pinMode(Player12, INPUT_PULLUP);
+  
   Serial.begin(9600);
   SPI.setModule(0);
-  Serial.println("Hola amigos");
   LCD_Init();
   LCD_Clear(0x00);
 
-  // Fondo de noche
+  // Fondo de noche difuminado
   FillRect(0, 0, 320, 60, 0x0000);
   FillRect(0, 60, 320, 40, 0x0021);
   FillRect(0, 100, 320, 30, 0x0022);
@@ -51,8 +58,7 @@ void setup() {
   FillRect(0, 170, 320, 20, 0x00a5);
   FillRect(0, 190, 320, 20, 0x00a5);
 
-  // Edificio
-  
+  // Edificio 1
   FillRect(40, 150, 70, 60, 0x0862);
   for(int y = 10; y < 50; y++){
     FillRect(41, 150 + y, 68, 4, 0x62e2);
@@ -83,8 +89,23 @@ void setup() {
   FillRect(214, 110, 3, 100, 0x1082);
   FillRect(229, 110, 3, 100, 0x1082); 
   FillRect(244, 110, 3, 100, 0x1082);
-  delay(1500);
+  LCD_Print("Laboratorio 7", 53, 30, 2, 0x0000, 0xffff);
+  LCD_Print("Luis Pablo Carranza", 10, 50, 2, 0x0000, 0xffff);
+  LCD_Print("PRESS ANY BUTTON", 25, 215, 2, 0x0000, 0xffff);
+  delay(1000);
 
+  while(buttonState1 == HIGH & buttonState2 == HIGH){
+    buttonState1 = digitalRead(Player11);
+    buttonState2 = digitalRead(Player12);
+    LCD_Print("                   ", 10, 215, 2, 0x0000, 0x0000);
+    delay(500);
+    LCD_Print("PRESS ANY BUTTON", 25, 215, 2, 0x0000, 0xffff);
+    delay(500);
+    };
+
+  FillRect(0, 0, 320, 240, 0x0000);
+  
+  // Fondo de pantalla del juego
   FillRect(0,0, 320, 30, 0x869e);
   LCD_Sprite(0, 30, 41, 36, Background, 1, 0, 0, 0);
   LCD_Sprite(40, 30, 41, 36, Background, 1, 0, 1, 0);
@@ -94,62 +115,90 @@ void setup() {
   LCD_Sprite(200, 30, 41, 36, Background, 1, 0, 1, 0);
   LCD_Sprite(240, 30, 41, 36, Background, 1, 0, 0, 0);
   LCD_Sprite(279, 30, 41, 36, Background, 1, 0, 1, 0);
-  
+
+    
+  // Se debe llenar el piso en la longitud de la pantalla
   for(int x = 0; x <319; x++){
     LCD_Bitmap(x, 208, 30, 30, piso);
     x+=28;
    }
-   
+
   FillRect(0, 66, 320, 144, 0x5bae);
 
+  // Se llenan las montañas
+  for(int x = 0; x<385; x++){
+    LCD_Bitmap(x, 193, 35, 17, backpart1);
+    x += 16;
+    }
+
+  // Dibujo del helicóptero
   LCD_Bitmap(20, 69, 60, 42, helicopter);
+  // Dibujo del jugador 2
+  LCD_Bitmap(250, 100, 33, 42, Metal2);
+
+  LCD_Sprite(0, 173, 35, 37, Metal1, 5, 1, 0, 0);
+  delay(1000);
 }
 //***************************************************************************************************************************************
 // Loop Infinito
 //***************************************************************************************************************************************
 void loop() {
-  for(int x = 0; x<280; x++){
-    delay(15);
-    int anim1 = (x/15)%2;
-    LCD_Sprite(x, 168, 40, 42, Metal1,6, anim1, 0, 0); 
-    V_line( x -1, 168, 41, 0x5bae);
-    }
-  FillRect(280, 168, 40, 42, 0x5bae);
-}
+  
+  buttonState2 = digitalRead(Player12);
+  buttonState1 = digitalRead(Player11);
+  
+  if(buttonState2 == LOW){
+    while((buttonState2 == LOW) && (xp1<285)){   // Animación del personaje
+      buttonState2 = digitalRead(Player12);
+      delay(15);
 
-int chartohex(int val){
-  switch(val){
-    case 48:
-      return 0;
-    case 49:
-      return 1;
-    case 50:
-      return 2;
-    case 51:
-      return 3;
-    case 52:
-      return 4;
-    case 53:
-      return 5;
-    case 54:
-      return 6;
-    case 55:
-      return 7;
-    case 56:
-      return 8;
-    case 57:
-      return 9;
-    case 97:
-      return 10;
-    case 98:
-      return 11;
-    case 99:
-      return 12;
-    case 100:
-      return 13;
-    case 101:
-      return 14;
-    case 102:
-      return 15;
-    }
+      // Relleno de la parte que va dejando el jugador
+      LCD_Sprite(xp1-1, 193, 1, 17, backpart1, 34, comp, 0, 0);
+      if(comp <= 35){
+        comp ++;
+        }
+      else{
+        comp = 0;
+        }
+        
+      // Animación del jugador
+      int anim1 = (xp1/15)%2;
+      LCD_Sprite(xp1, 173, 35, 37, Metal1, 5, anim1, 0, 0);
+      xp1++;
+      }
+
+      // Si superó el límite redibuja la última parte
+      if(xp1 >= 285){
+        xp1 = 0;
+        LCD_Bitmap(250, 193, 35, 17, backpart1);  // Rellena lo que se quedó al topar el borde
+        LCD_Bitmap(285, 193, 35, 17, backpart1);
+        FillRect(280, 173, 39, 20, 0x5bae);
+        }
+    
   }
+  if(buttonState1 == LOW){
+    while((buttonState1 == LOW) && (xp1>0)){   // Animación del personaje
+      buttonState1 = digitalRead(Player11);
+      delay(15);
+      LCD_Sprite(xp1+35, 193, 1, 17, backpart1, 34, comp2, 0, 0);
+      if(comp2 > 0){
+        comp2--;
+        }
+      else{
+        comp2 = 35;
+        }
+      
+
+      int anim1 = (xp1/15)%2;
+      LCD_Sprite(xp1, 173, 35, 37, Metal1,5, anim1, 1, 0);
+      xp1--;
+      }
+      if(xp1 <= 35){
+        xp1 = 284;
+        LCD_Bitmap(0, 193, 35, 17, backpart1);  // Rellena lo que se quedó al topar el borde
+        LCD_Bitmap(0, 193, 35, 17, backpart1);
+        FillRect(0, 173, 39, 20, 0x5bae);
+        }
+    
+    }
+}
